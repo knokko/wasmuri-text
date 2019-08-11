@@ -1,0 +1,33 @@
+[package]
+name = "wasmuri-text"
+version = "0.1.0"
+authors = ["knokko <knokogator@hotmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "*"
+wasmuri-core = { git = "https://github.com/knokko/wasmuri-core" }
+
+[dependencies.web-sys]
+version = "0.3"
+features = ["Attr",
+                "Document",
+                "Element",
+                "HtmlElement",
+                "Node",
+                "Text",
+                "Event",
+                "HtmlCanvasElement",
+                "CanvasRenderingContext2d",
+                "ImageData",
+                "TextMetrics",
+                "WebGlRenderingContext",
+                "WebGlBuffer",
+                "WebGlTexture",
+                "WebGlProgram",
+                "WebGlShader",
+                "WebGlUniformLocation",
+                "Window"]
