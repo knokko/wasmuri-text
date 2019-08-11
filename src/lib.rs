@@ -17,6 +17,26 @@ pub use font::*;
 
 use shaders::TextProgram;
 
+/// The TextRenderer is the main struct of this crate. Instances of TextRenderer can create Font's, which can perform the actual
+/// text rendering. You will need an instance of TextRenderer for each canvas you wish to draw text on with WebGl, so you will
+/// only need a single instance in most cases.
+/// 
+/// To get started, you will need to obtain the WebGlRenderingContext you wish to draw text on. Then you will need to create an
+/// instance of TextRenderer. You can create one with the from_... or from_gl function of this struct. Use the function that is
+/// the most convenient for your situation and note that a WebGlRenderingContext can easily be cloned.
+/// 
+/// Once you have the instance, you need to add Font's. You can create a single Font at a time using the add_font method or you
+/// can add multiple using the add_fonts method. If you use the add_font method, a reference to the newly created font will be
+/// returned. If you use add_fonts, you can get the reference to the Font you want by using the get_font_by_details method.
+/// 
+/// Once you have a reference to the Font you wish to use, you can start create a model for the text you want to draw. You will
+/// need a separate TextModel for each string you would like to draw. To create a TextModel, use the create_text_model method
+/// of the Font.
+/// 
+/// Before you start drawing, call the start_rendering method of the TextRenderer. Thereafter, you can use the render_text_model
+/// method of the Font to finally draw the text.
+/// 
+/// Every method mentioned above has its own more detailed description.
 pub struct TextRenderer<'a> {
 
     gl: Rc<WebGlRenderingContext>,
@@ -69,10 +89,12 @@ pub const DEFAULT_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU
 
 impl<'a> TextRenderer<'a> {
 
-    /// This will create a new TextRenderer without any fonts. To add fonts, use the add_fonts or add_font method!
-    pub fn new_empty(gl: Rc<WebGlRenderingContext>, expected_number_of_fonts: usize) -> TextRenderer<'a> {
+    /// This function will create a TextRenderer instance from the given reference counter. This function is convenient if
+    /// you are already using an Rc to store your webgl context. The created TextRenderer won't have any fonts yet, read the
+    /// description of TextRenderer for more information about this.
+    pub fn from_rc(gl: Rc<WebGlRenderingContext>) -> TextRenderer<'a> {
         let shader_program = RefCell::new(TextProgram::create_instance(Rc::clone(&gl)));
-        let fonts = Vec::with_capacity(expected_number_of_fonts);
+        let fonts = Vec::new();
 
         TextRenderer {
             gl,
@@ -87,6 +109,25 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
+    /// This function will create a TextRenderer instance for the given webgl rendering context. The created TextRenderer 
+    /// won't have any fonts yet, read the description of TextRenderer for more information about this.
+    pub fn from_gl(gl: WebGlRenderingContext) -> TextRenderer<'a> {
+        TextRenderer::from_rc(Rc::new(gl))
+    }
+
+    /// This function will create a TextRenderer instance for the given canvas. This method will panic if no webgl context
+    /// can be created for the canvas. Even though browsers that support WebAssembly generally support WebGl, only 1 type of
+    /// context can be created for each canvas, so this would fail if the canvas has created a 2d context before.
+    pub fn from_canvas(canvas: &HtmlCanvasElement) -> TextRenderer<'a> {
+        TextRenderer::from_gl(canvas.get_context("webgl").expect("should have get_context").expect("should be able to obtain webgl context").dyn_into::<WebGlRenderingContext>().expect("getContext'webgl' should give a webgl rendering context"))
+    }
+
+    /// Adds a Font for every FontDetails supplied to this method. After this method call, you can use the get_font_by_details
+    /// method to obtain references to the created Font's.
+    /// 
+    /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and all created Font's
+    /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
+    /// about any of the three properties, see their description.
     pub fn add_fonts(&'a mut self, fonts: Vec<FontDetails<'a>>){
         let mut new_fonts = Vec::with_capacity(fonts.len());
         for font_details in fonts {

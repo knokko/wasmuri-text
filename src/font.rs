@@ -111,7 +111,6 @@ impl<'a> FontDetails<'a> {
 pub struct Font<'a> {
 
     font_details: FontDetails<'a>,
-    font_size: usize,
 
     max_text_height: u32,
     aspect_ratio: f32,
@@ -288,7 +287,6 @@ impl<'a> Font<'a> {
 
         Font {
             font_details,
-            font_size,
             max_text_height: max_height,
 
             // The initial aspect_ratio doesn't matter because the TextRenderer will update the aspect_ratio of this font before every frame
