@@ -7,11 +7,13 @@ use wasm_bindgen::JsCast;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub use model::*;
-pub use font::*;
-
 mod character;
 mod shaders;
+mod model;
+mod font;
+
+pub use model::*;
+pub use font::*;
 
 use shaders::TextProgram;
 
