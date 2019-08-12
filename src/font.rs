@@ -17,7 +17,6 @@ use std::cell::RefCell;
 use super::character::Character;
 use super::model::TextModel;
 use super::shaders::TextProgram;
-use wasmuri_core::util::color::Color;
 
 #[derive(PartialEq,Eq,Copy,Clone)]
 /// Represents the id of a Font for a given TextRenderer. The id itself will be very cheap in terms of memory and it can
@@ -113,15 +112,15 @@ pub struct Font<'a> {
     font_details: FontDetails<'a>,
 
     max_text_height: u32,
-    aspect_ratio: f32,
+    pub(super) aspect_ratio: f32,
 
     id: FontID,
-    selected_font: &'a RefCell<Option<FontID>>,
+    pub(super) selected_font: &'a RefCell<Option<FontID>>,
 
     characters: Vec<Option<Character>>,
 
-    gl: &'a WebGlRenderingContext,
-    shader_program: &'a RefCell<TextProgram>,
+    pub(super) gl: &'a WebGlRenderingContext,
+    pub(super) shader_program: &'a RefCell<TextProgram>,
     texture: WebGlTexture
 }
 
@@ -421,83 +420,14 @@ impl<'a> Font<'a> {
             gl.buffer_data_with_array_buffer_view(GL::ARRAY_BUFFER, &js_array, GL::STATIC_DRAW);
         }
 
-        TextModel::new(gl, buffer, char_counter, max_width)
+        TextModel::new(&self, buffer, char_counter, max_width)
     }
 
-    fn set_current(&'a self){
+    pub(super) fn set_current(&'a self){
         self.gl.active_texture(GL::TEXTURE0);
         self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.texture));
         let shader = self.shader_program.borrow();
         shader.set_texture_sampler(0);
-    }
-
-    /// Renders a previously created TextModel at the given position with the given size and colors. The start_rendering
-    /// method of the TextRenderer that created this font should be called before calling this method.
-    /// 
-    /// The given TextModel must have been created by this Font.
-    /// 
-    /// The next 3 parameters will determine the space that will be affected by the drawn text and its background. I will
-    /// call the entire space that will be affected the 'render space'. The entire render space will be filled with the
-    /// background color and the text will be drawn within the render space. The render space will be expressed in the
-    /// OpenGL coordinate system, so the bottom-left corner would be (-1.0, -1.0) and the top-right corder would be
-    /// (1.0, 1.0).
-    /// 
-    /// Note that only characters like Á will actually (almost) reach the top of the render space and only characters like 
-    /// 'y' will (almost) touch the bottom of the render space.
-    /// 
-    /// The parameters offset_x and offset_y determine the bottom-left corner of the place where the text will be rendered.
-    /// 
-    /// The scale_y parameter determines the height of the render space (in OpenGL coordinate space), so a scale_y of 2.0 with 
-    /// an offset_y of -1.0 would claim the full height of the canvas. The width of the text will depend on both the width of
-    /// the string and scale_y. You can find the width in advance using the get_render_width method of this Font.
-    /// 
-    /// The fill_color will determine the color of the interior of the rendered text. If you make it transparent, you will see
-    /// the background_color instead.
-    /// 
-    /// The stroke_color will determine the color of the lines at the borders of the rendered text. If this Font was created
-    /// with a line_width of 0, the stroke_color won't have any effect. Otherwise, the stroke_color will have effect. If the
-    /// stroke_color is the same as the fill_color, the text will be rendered (a little) thicker. If the stroke_color is
-    /// transparent, the text will be rendered (a little) thinner.
-    /// 
-    /// The background_color will determine the color of the render space wherever no text is drawn (or the text is (partially)
-    /// transparent). If it is transparent, the text will be drawn over whatever the previous color was.
-    pub fn render_text_model(&'a self, text: &TextModel, offset_x: f32, offset_y: f32, scale_y: f32, fill_color: Color, stroke_color: Color, background_color: Color){
-        let need_set_font;
-        {
-            let selected_font = *self.selected_font.borrow();
-            match selected_font {
-                Some(font_id) => need_set_font = font_id != self.id,
-                None => need_set_font = true
-            };
-        }
-
-        if need_set_font {
-            let mut selected_font = self.selected_font.borrow_mut();
-            self.set_current();
-            *selected_font = Some(self.id);
-        }
-
-        let scale_x = scale_y / self.aspect_ratio;
-
-        let mut shader = self.shader_program.borrow_mut();
-        shader.set_background_color(background_color);
-        shader.set_fill_color(fill_color);
-        shader.set_stroke_color(stroke_color);
-        shader.set_screen_position(offset_x, offset_y);
-        shader.set_scale(scale_x, scale_y);
-        text.bind(&shader);
-        self.gl.draw_arrays(GL::TRIANGLES, 0, text.get_vertex_count());
-    }
-
-    /// This method can be used to predict the width of the text drawn with the render_text_model method.
-    /// The text and scale_y parameter should be the same as the values you are planning to pass to the
-    /// render_text_model method.
-    /// 
-    /// The result of this method will be given in the OpenGL coordinate space,
-    /// so a return value of 2.0 means the text would span the entire canvas width.
-    pub fn get_render_width(&'a self, text: &TextModel, scale_y: f32) -> f32 {
-        let scale_x = scale_y / self.aspect_ratio;
-        scale_x * text.get_width()
     }
 
     pub(super) fn set_aspect_ratio(&mut self, aspect_ratio: f32){
