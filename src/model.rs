@@ -77,7 +77,7 @@ impl<'a> TextModel<'a> {
         {
             let selected_font = *self.font.selected_font.borrow();
             match selected_font {
-                Some(font_id) => need_set_font = font_id != self.font.get_id(),
+                Some(font_id) => need_set_font = font_id != self.font.id,
                 None => need_set_font = true
             };
         }
@@ -85,7 +85,7 @@ impl<'a> TextModel<'a> {
         if need_set_font {
             let mut selected_font = self.font.selected_font.borrow_mut();
             self.font.set_current();
-            *selected_font = Some(self.font.get_id());
+            *selected_font = Some(self.font.id);
         }
 
         let scale_x = scale_y / self.font.aspect_ratio;

@@ -168,17 +168,6 @@ impl<'a> TextRenderer<'a> {
         None
     }
 
-    /// Gets a Font by its FontID. You can only obtain FontID's from Font's by using their get_id method, so this method is only useful
-    /// for the scenario where you kept the FontID but lost the reference to the Font.
-    /// 
-    /// Only use this method for FontID's that were obtained from a Font created by this TextManager! If you use the FontID from another
-    /// TextManager, this method will panic or return a possibly different Font.
-    /// 
-    /// This method will have very good performance.
-    pub fn get_font_by_id(&self, font_id: FontID) -> &Font {
-        &self.fonts[font_id.get_value()]
-    }
-
     /// This method should be called before doing any rendering operations with the Font's of this TextManager (it will do stuff like
     /// preparing the text shaders). This method will need to be called again if any external webgl rendering on the webgl context of this
     /// TextRenderer has taken place. With external, I mean any rendering that wasn't done by this crate.

@@ -20,16 +20,7 @@ use super::model::TextModel;
 use super::shaders::TextProgram;
 
 #[derive(PartialEq,Eq,Copy,Clone)]
-/// Represents the id of a Font for a given TextRenderer. The id itself will be very cheap in terms of memory and it can
-/// be used to quickly obtain a reference to the corresponding Font by using the get_font_by_id method of the corresponding
-/// TextRenderer. 
-/// 
-/// Please do not use a FontID in the get_font_by_id method of a different TextRenderer because that will likely return a
-/// completely different Font or even panic. Also, you probably shouldn't have multiple instances of TextRenderer anyway.
-/// 
-/// Instances of FontID can be obtained by using the get_id method of a Font. The obtained FontID will then belong to the
-/// Font on which the get_id method was called and the TextRenderer that created the Font.
-pub struct FontID {
+pub(super) struct FontID {
 
     value: usize
 }
@@ -40,10 +31,6 @@ impl FontID {
         FontID {
             value
         }
-    }
-
-    pub(super) fn get_value(&self) -> usize {
-        self.value
     }
 }
 
@@ -93,13 +80,10 @@ impl<'a> FontDetails<'a> {
 /// Fonts are the structs responsible for actually drawing text onto the webgl canvas. They can be created by
 /// using the add_font or add_fonts method of a TextRenderer.
 /// 
-/// There are 3 ways to obtain a Font from a TextRenderer:
+/// There are 2 ways to obtain a Font from a TextRenderer:
 /// 
 /// -If you created the font with the add_font method of a TextRenderer, you can store the return value which
 /// will be a reference to the created font.
-/// 
-/// -If you have the FontID of the font, you can obtain a reference to the Font by calling the get_font_by_id
-/// method of the TextRenderer that created the font.
 /// 
 /// -If you have the details of the font, you can use the get_font_by_details method of the TextRenderer that
 /// created the font.
@@ -115,7 +99,7 @@ pub struct Font<'a> {
     max_text_height: u32,
     pub(super) aspect_ratio: f32,
 
-    id: FontID,
+    pub(super) id: FontID,
     pub(super) selected_font: &'a RefCell<Option<FontID>>,
 
     characters: Vec<Option<Character>>,
@@ -301,13 +285,6 @@ impl<'a> Font<'a> {
             shader_program,
             texture
         }
-    }
-
-    /// Gives the FontID of this Font. This id can be used to obtain a reference to this Font using the get_font_by_id
-    /// method of the TextRenderer that created this Font. Please note that this id will not be valid for any other
-    /// TextRenderer's.
-    pub fn get_id(&self) -> FontID {
-        self.id
     }
 
     /// Gets the FontDetails instance that was used to create this Font. See the description of FontDetails for more info
