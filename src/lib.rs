@@ -136,6 +136,12 @@ impl<'a> TextRenderer<'a> {
         self.fonts.append(&mut new_fonts);
     }
 
+    /// Adds a single Font with the given FontDetails. A reference to the newly created Font will be returned by this method. You
+    /// could also retrieve the created Font with the get_font_by_details method of this TextRenderer.
+    /// 
+    /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and the created Font
+    /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
+    /// about any of the three properties, see their description.
     pub fn add_font(&'a mut self, font_details: FontDetails<'a>) -> &'a Font {
         let font = Self::create_font(&self.gl, &self.shader_program, FontID::new(self.fonts.len()), &self.selected_font, self.font_size, self.line_width, font_details, self.all_chars);
         self.fonts.push(font);
@@ -146,6 +152,10 @@ impl<'a> TextRenderer<'a> {
         Font::new(&gl, &shader_program, font_id, selected_font, font_size, line_width, font_details, all_chars)
     }
 
+    /// Gets a previously created Font (with add_font or add_fonts) by its FontDetails. It will return the reference to the first
+    /// Font with the same FontDetails as the font_details, or None if no such Font was found. The font details will be compared by
+    /// value, not by reference, so the supplied font_details does not need to have the same memory address as the original one of
+    /// the Font.
     pub fn get_font_by_details(&self, font_details: FontDetails<'a>) -> Option<&Font> {
 
         // Don't bother doing clever search because I am expecting the number of fonts to be small
@@ -158,11 +168,20 @@ impl<'a> TextRenderer<'a> {
         None
     }
 
+    /// Gets a Font by its FontID. You can only obtain FontID's from Font's by using their get_id method, so this method is only useful
+    /// for the scenario where you kept the FontID but lost the reference to the Font.
+    /// 
+    /// Only use this method for FontID's that were obtained from a Font created by this TextManager! If you use the FontID from another
+    /// TextManager, this method will panic or return a possibly different Font.
+    /// 
+    /// This method will have very good performance.
     pub fn get_font_by_id(&self, font_id: FontID) -> &Font {
         &self.fonts[font_id.get_value()]
     }
 
-    /// This method should be called before doing any rendering operations with the fonts
+    /// This method should be called before doing any rendering operations with the Font's of this TextManager (it will do stuff like
+    /// preparing the text shaders). This method will need to be called again if any external webgl rendering on the webgl context of this
+    /// TextRenderer has taken place. With external, I mean any rendering that wasn't done by this crate.
     pub fn start_rendering(&mut self){
 
         let gl = &self.gl;
