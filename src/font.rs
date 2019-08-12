@@ -5,12 +5,13 @@ use web_sys::WebGlTexture;
 use web_sys::window;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlElement;
-use web_sys::console;
 
 use js_sys::Float32Array;
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
+
+use wasmuri_core::util::print;
 
 use std::cell::RefCell;
 
@@ -371,8 +372,8 @@ impl<'a> Font<'a> {
 
                     buffer_data[offset + 10] = min_x;
                     buffer_data[offset + 11] = min_y;
-                }, None => console::log_1(&JsValue::from_str(&format!("No texture for character {}", text_char)))
-            }
+                }, None => print(&format!("No texture for character {}", text_char))
+            };
 
             char_index += 1;
         }
@@ -408,8 +409,8 @@ impl<'a> Font<'a> {
 
                     buffer_data[offset + 10] = left_u;
                     buffer_data[offset + 11] = bottom_v;
-                }, None => console::log_1(&JsValue::from_str(&format!("No texture for character {}", text_char)))
-            }
+                }, None => print(&format!("No texture for character {}", text_char))
+            };
 
             char_index += 1;
         }
