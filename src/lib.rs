@@ -17,24 +17,23 @@ pub use font::*;
 
 use shaders::TextProgram;
 
-/// The TextRenderer is the main struct of this crate. Instances of TextRenderer can create Font's, which can perform the actual
-/// text rendering. You will need an instance of TextRenderer for each canvas you wish to draw text on with WebGl, so you will
-/// only need a single instance in most cases.
+/// The TextRenderer is the main struct of this crate. Instances of TextRenderer can create Font's, which can create TextModel's
+/// to perform the actual text rendering. You will need an instance of TextRenderer for each canvas you wish to draw text on with 
+/// WebGl, so you will only need a single instance in most cases.
 /// 
 /// To get started, you will need to obtain the WebGlRenderingContext you wish to draw text on. Then you will need to create an
-/// instance of TextRenderer. You can create one with the from_... or from_gl function of this struct. Use the function that is
-/// the most convenient for your situation and note that a WebGlRenderingContext can easily be cloned.
+/// instance of TextRenderer. You can create one with the from_... functions of this struct. Use the function that is the most 
+/// convenient for your situation and note that a WebGlRenderingContext can easily be cloned.
 /// 
 /// Once you have the instance, you need to add Font's. You can create a single Font at a time using the add_font method or you
 /// can add multiple using the add_fonts method. If you use the add_font method, a reference to the newly created font will be
 /// returned. If you use add_fonts, you can get the reference to the Font you want by using the get_font_by_details method.
 /// 
-/// Once you have a reference to the Font you wish to use, you can start create a model for the text you want to draw. You will
-/// need a separate TextModel for each string you would like to draw. To create a TextModel, use the create_text_model method
-/// of the Font.
+/// Once you have a reference to the Font you wish to use, you can create a model for the text you want to draw. You will need a 
+/// separate TextModel for each string you would like to draw. To create a TextModel, use the create_text_model method of the Font.
 /// 
-/// Before you start drawing, call the start_rendering method of the TextRenderer. Thereafter, you can use the render_text_model
-/// method of the Font to finally draw the text.
+/// Before you start drawing the TextModel, call the start_rendering method of the TextRenderer. Thereafter, you can use the render
+/// method of the TextModel to finally draw the text.
 /// 
 /// Every method mentioned above has its own more detailed description.
 pub struct TextRenderer<'a> {
@@ -125,6 +124,9 @@ impl<'a> TextRenderer<'a> {
     /// Adds a Font for every FontDetails supplied to this method. After this method call, you can use the get_font_by_details
     /// method to obtain references to the created Font's.
     /// 
+    /// Please note that creating a Font is an expensive operation, so you should not create more Font's than you need and reuse
+    /// Font's rather than creating a new one every time you render text.
+    /// 
     /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and all created Font's
     /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
     /// about any of the three properties, see their description.
@@ -138,6 +140,9 @@ impl<'a> TextRenderer<'a> {
 
     /// Adds a single Font with the given FontDetails. A reference to the newly created Font will be returned by this method. You
     /// could also retrieve the created Font with the get_font_by_details method of this TextRenderer.
+    /// 
+    /// Please note that creating a Font is an expensive operation, so you should not create more Font's than you need and reuse
+    /// Font's rather than creating a new one every time you render text.
     /// 
     /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and the created Font
     /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
@@ -153,7 +158,7 @@ impl<'a> TextRenderer<'a> {
     }
 
     /// Gets a previously created Font (with add_font or add_fonts) by its FontDetails. It will return the reference to the first
-    /// Font with the same FontDetails as the font_details, or None if no such Font was found. The font details will be compared by
+    /// Font with the same FontDetails as font_details, or None if no such Font was found. The font details will be compared by
     /// value, not by reference, so the supplied font_details does not need to have the same memory address as the original one of
     /// the Font.
     pub fn get_font_by_details(&self, font_details: FontDetails<'a>) -> Option<&Font> {

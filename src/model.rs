@@ -7,6 +7,10 @@ use wasmuri_core::util::color::Color;
 use super::shaders::TextProgram;
 use super::Font;
 
+/// Instances of TextModel can be used to draw text on their webgl context. They can be created with the create_text_model
+/// method of Font's.
+/// 
+/// To use an instance of TextModel, call its render method and read its description to see what all the parameters are for.
 pub struct TextModel<'a> {
 
     font: &'a Font<'a>,
@@ -100,9 +104,9 @@ impl<'a> TextModel<'a> {
         self.font.gl.draw_arrays(GL::TRIANGLES, 0, self.vertex_count);
     }
 
-    /// This method can be used to predict the width of the text drawn with the render_text_model method.
-    /// The scale_y parameter should be the same as the scale_y you are planning to pass to the
-    /// render_text_model method.
+    /// This method can be used to predict the width of the text drawn with the render method.
+    /// 
+    /// The scale_y parameter should be the same as the scale_y you are planning to pass to the render method.
     /// 
     /// The result of this method will be given in the OpenGL coordinate space, so a return value of 2.0 
     /// means the text would span the entire canvas width (if the offset_x would be -1.0).

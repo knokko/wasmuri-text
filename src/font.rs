@@ -77,8 +77,8 @@ impl<'a> FontDetails<'a> {
     }
 }
 
-/// Fonts are the structs responsible for actually drawing text onto the webgl canvas. They can be created by
-/// using the add_font or add_fonts method of a TextRenderer.
+/// Fonts are the structs responsible for creating TextModel's that can draw text onto the webgl canvas. Instances
+/// of Font can be created by using the add_font or add_fonts method of a TextRenderer.
 /// 
 /// There are 2 ways to obtain a Font from a TextRenderer:
 /// 
@@ -88,10 +88,10 @@ impl<'a> FontDetails<'a> {
 /// -If you have the details of the font, you can use the get_font_by_details method of the TextRenderer that
 /// created the font.
 /// 
-/// To use a Font, you can use the create_text_model and render_text_model method of the font. First use the
-/// create_text_model method to obtain a TextModel for the text you would like to render. Then call the
-/// render_text_model method to actually render the text. You are encouraged to store the result of
-/// create_text_model so that you can reuse it many times rather than creating it again and again.
+/// To use a Font, you can use the create_text_model method of the font. First use the create_text_model method 
+/// to obtain a TextModel for the text you would like to render. Then call the render method of the TextModel to 
+/// actually render the text. You are encouraged to store the result of create_text_model so that you can reuse it 
+/// many times rather than creating it again and again.
 pub struct Font<'a> {
 
     font_details: FontDetails<'a>,
@@ -293,9 +293,8 @@ impl<'a> Font<'a> {
         self.font_details
     }
 
-    /// Creates a TextModel for the given string. The returned TextModel can be used by this Font (and only this Font) using 
-    /// the render_text_model method and can be reused as often as you like. Reusing the returned TextModel is encouraged to
-    /// avoid needless allocation of buffers.
+    /// Creates a TextModel for the given string. The returned TextModel has a render method that will draw this text and can 
+    /// be reused as often as you like. Reusing the returned TextModel is encouraged to avoid needless allocation of buffers.
     pub fn create_text_model(&self, text: &str) -> TextModel {
 
         let mut char_counter = 0;
