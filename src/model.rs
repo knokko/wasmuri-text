@@ -7,13 +7,15 @@ use wasmuri_core::util::color::Color;
 use super::shaders::TextProgram;
 use super::Font;
 
+use std::rc::Rc;
+
 /// Instances of TextModel can be used to draw text on their webgl context. They can be created with the create_text_model
 /// method of Font's.
 /// 
 /// To use an instance of TextModel, call its render method and read its description to see what all the parameters are for.
-pub struct TextModel<'a> {
+pub struct TextModel {
 
-    font: &'a Font<'a>,
+    font: Rc<Font>,
 
     buffer: WebGlBuffer,
 
@@ -21,9 +23,9 @@ pub struct TextModel<'a> {
     total_width: f32
 }
 
-impl<'a> TextModel<'a> {
+impl TextModel {
 
-    pub(super) fn new(font: &'a Font<'a>, buffer: WebGlBuffer, char_count: usize, total_width: f32) -> TextModel<'a> {
+    pub(super) fn new(font: Rc<Font>, buffer: WebGlBuffer, char_count: usize, total_width: f32) -> TextModel {
         TextModel {
             font,
             buffer,
@@ -33,7 +35,7 @@ impl<'a> TextModel<'a> {
     }
 
     pub(super) fn bind(&self, shader_program: &TextProgram){
-        let gl = &self.font.gl;
+        let gl = &self.get_font().gl;
 
         gl.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
 
@@ -76,32 +78,33 @@ impl<'a> TextModel<'a> {
     /// 
     /// The background_color will determine the color of the render space wherever no text is drawn (or the text is (partially)
     /// transparent). If it is transparent, the text will be drawn over whatever the previous color was.
-    pub fn render(&'a self, offset_x: f32, offset_y: f32, scale_y: f32, fill_color: Color, stroke_color: Color, background_color: Color){
+    pub fn render(&self, offset_x: f32, offset_y: f32, scale_y: f32, fill_color: Color, stroke_color: Color, background_color: Color){
         let need_set_font;
+        let my_font = self.get_font();
         {
-            let selected_font = *self.font.selected_font.borrow();
+            let selected_font = *my_font.selected_font.borrow();
             match selected_font {
-                Some(font_id) => need_set_font = font_id != self.font.id,
+                Some(font_id) => need_set_font = font_id != my_font.id,
                 None => need_set_font = true
             };
         }
 
         if need_set_font {
-            let mut selected_font = self.font.selected_font.borrow_mut();
-            self.font.set_current();
-            *selected_font = Some(self.font.id);
+            let mut selected_font = my_font.selected_font.borrow_mut();
+            my_font.set_current();
+            *selected_font = Some(my_font.id);
         }
 
-        let scale_x = scale_y / self.font.aspect_ratio;
+        let scale_x = scale_y / my_font.aspect_ratio.get();
 
-        let mut shader = self.font.shader_program.borrow_mut();
+        let mut shader = my_font.shader_program.borrow_mut();
         shader.set_background_color(background_color);
         shader.set_fill_color(fill_color);
         shader.set_stroke_color(stroke_color);
         shader.set_screen_position(offset_x, offset_y);
         shader.set_scale(scale_x, scale_y);
         self.bind(&shader);
-        self.font.gl.draw_arrays(GL::TRIANGLES, 0, self.vertex_count);
+        my_font.gl.draw_arrays(GL::TRIANGLES, 0, self.vertex_count);
     }
 
     /// This method can be used to predict the width of the text drawn with the render method.
@@ -110,15 +113,22 @@ impl<'a> TextModel<'a> {
     /// 
     /// The result of this method will be given in the OpenGL coordinate space, so a return value of 2.0 
     /// means the text would span the entire canvas width (if the offset_x would be -1.0).
-    pub fn get_render_width(&'a self, scale_y: f32) -> f32 {
-        let scale_x = scale_y / self.font.aspect_ratio;
+    pub fn get_render_width(&self, scale_y: f32) -> f32 {
+        let my_font = self.get_font();
+        let scale_x = scale_y / my_font.aspect_ratio.get();
         scale_x * self.total_width
+    }
+
+    fn get_font(&self) -> &Rc<Font> {
+        &self.font
     }
 }
 
-impl<'a> Drop for TextModel<'a> {
+impl Drop for TextModel {
 
     fn drop(&mut self){
-        self.font.gl.delete_buffer(Some(&self.buffer));
+
+        // TODO This seems dangerous, wouldn't it outlive its Font here?
+        self.get_font().gl.delete_buffer(Some(&self.buffer));
     }
 }

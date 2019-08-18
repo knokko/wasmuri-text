@@ -14,6 +14,8 @@ use wasm_bindgen::JsValue;
 use wasmuri_core::util::print;
 
 use std::cell::RefCell;
+use std::cell::Cell;
+use std::rc::Rc;
 
 use super::character::Character;
 use super::model::TextModel;
@@ -34,7 +36,7 @@ impl FontID {
     }
 }
 
-#[derive(PartialEq,Eq,Clone,Copy)]
+#[derive(PartialEq,Eq,Clone)]
 /// Instances of FontDetails represent properties of JavaScript canvas fonts, but without the font size.
 /// An example of a JavaScript font is "bold 40px Arial". To obtain a FontDetails instance corresponding 
 /// to that example font, you would need to use FontDetails::new("bold", "Arial").
@@ -47,33 +49,42 @@ impl FontID {
 /// 
 /// The size declaration of the font will be handled internally, but note that the size of the drawn text does
 /// NOT depend on that because the scaling of rendered text will be done on-the-fly.
-pub struct FontDetails<'a> {
+pub struct FontDetails {
 
-    before_size: &'a str,
-    after_size: &'a str
+    before_size: String,
+    after_size: String
 }
 
-impl<'a> FontDetails<'a> {
+impl FontDetails {
 
     /// Create a new instance of FontDetails with the given before and after string. See the description of
     /// FontDetails for an explanation about these values.
-    pub const fn new(before_size: &'a str, after_size: &'a str) -> FontDetails<'a> {
+    pub const fn from_string(before_size: String, after_size: String) -> FontDetails {
         FontDetails {
             before_size,
             after_size
         }
     }
 
+    /// Create a new instance of FontDetails with the given before and after string. See the description of
+    /// FontDetails for an explanation about these values.
+    pub fn from_str(before_size: &str, after_size: &str) -> FontDetails {
+        FontDetails {
+            before_size: before_size.to_string(),
+            after_size: after_size.to_string()
+        }
+    }
+
     /// Gets the part of the font string that should be placed before the size. See the description of FontDetails 
     /// for an explanation about the string value.
-    pub fn get_before_size(&'a self) -> &'a str {
-        self.before_size
+    pub fn get_before_size(&self) -> &str {
+        &self.before_size
     }
 
     /// Gets the part of the font string that should be placed after the size. See the description of FontDetails 
     /// for an explanation about the string value.
-    pub fn get_after_size(&'a self) -> &'a str {
-        self.after_size
+    pub fn get_after_size(&self) -> &str {
+        &self.after_size
     }
 }
 
@@ -92,26 +103,26 @@ impl<'a> FontDetails<'a> {
 /// to obtain a TextModel for the text you would like to render. Then call the render method of the TextModel to 
 /// actually render the text. You are encouraged to store the result of create_text_model so that you can reuse it 
 /// many times rather than creating it again and again.
-pub struct Font<'a> {
+pub struct Font {
 
-    font_details: FontDetails<'a>,
+    font_details: FontDetails,
 
     max_text_height: u32,
-    pub(super) aspect_ratio: f32,
+    pub(super) aspect_ratio: Cell<f32>,
 
     pub(super) id: FontID,
-    pub(super) selected_font: &'a RefCell<Option<FontID>>,
+    pub(super) selected_font: Rc<RefCell<Option<FontID>>>,
 
     characters: Vec<Option<Character>>,
 
-    pub(super) gl: &'a WebGlRenderingContext,
-    pub(super) shader_program: &'a RefCell<TextProgram>,
+    pub(super) gl: Rc<WebGlRenderingContext>,
+    pub(super) shader_program: Rc<RefCell<TextProgram>>,
     texture: WebGlTexture
 }
 
-impl<'a> Font<'a> {
+impl Font {
 
-    pub(super) fn new(gl: &'a WebGlRenderingContext, shader_program: &'a RefCell<TextProgram>, font_id: FontID, selected_font: &'a RefCell<Option<FontID>>, font_size: usize, line_width: f64, font_details: FontDetails<'a>, chars: &str) -> Font<'a> {
+    pub(super) fn new(gl: Rc<WebGlRenderingContext>, shader_program: Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: Rc<RefCell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, chars: &str) -> Font {
         let document = window().unwrap().document().unwrap();
         let font_string = &format!("{} {}px {}", font_details.get_before_size(), font_size, font_details.get_after_size());
 
@@ -274,7 +285,7 @@ impl<'a> Font<'a> {
             max_text_height: max_height,
 
             // The initial aspect_ratio doesn't matter because the TextRenderer will update the aspect_ratio of this font before every frame
-            aspect_ratio: 1.0,
+            aspect_ratio: Cell::new(1.0),
 
             id: font_id,
             selected_font,
@@ -289,20 +300,20 @@ impl<'a> Font<'a> {
 
     /// Gets the FontDetails instance that was used to create this Font. See the description of FontDetails for more info
     /// about such structs.
-    pub fn get_font_details(&self) -> FontDetails {
-        self.font_details
+    pub fn get_font_details(&self) -> &FontDetails {
+        &self.font_details
     }
 
     /// Creates a TextModel for the given string. The returned TextModel has a render method that will draw this text and can 
     /// be reused as often as you like. Reusing the returned TextModel is encouraged to avoid needless allocation of buffers.
-    pub fn create_text_model(&self, text: &str) -> TextModel {
+    pub fn create_text_model(self: Rc<Self>, text: &str) -> TextModel {
 
         let mut char_counter = 0;
         for _char in text.chars() {
             char_counter += 1;
         }
 
-        let gl = self.gl;
+        let gl = &self.gl;
 
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(GL::ARRAY_BUFFER, Some(&buffer));
@@ -397,22 +408,22 @@ impl<'a> Font<'a> {
             gl.buffer_data_with_array_buffer_view(GL::ARRAY_BUFFER, &js_array, GL::STATIC_DRAW);
         }
 
-        TextModel::new(&self, buffer, char_counter, max_width)
+        TextModel::new(Rc::clone(&self), buffer, char_counter, max_width)
     }
 
-    pub(super) fn set_current(&'a self){
+    pub(super) fn set_current(&self){
         self.gl.active_texture(GL::TEXTURE0);
         self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.texture));
         let shader = self.shader_program.borrow();
         shader.set_texture_sampler(0);
     }
 
-    pub(super) fn set_aspect_ratio(&mut self, aspect_ratio: f32){
-        self.aspect_ratio = aspect_ratio;
+    pub(super) fn set_aspect_ratio(&self, aspect_ratio: f32){
+        self.aspect_ratio.set(aspect_ratio);
     }
 }
 
-impl<'a> Drop for Font<'a> {
+impl Drop for Font {
 
     fn drop(&mut self){
         self.gl.delete_texture(Some(&self.texture));

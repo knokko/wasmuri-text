@@ -36,10 +36,10 @@ use shaders::TextProgram;
 /// method of the TextModel to finally draw the text.
 /// 
 /// Every method mentioned above has its own more detailed description.
-pub struct TextRenderer<'a> {
+pub struct TextRenderer {
 
     gl: Rc<WebGlRenderingContext>,
-    fonts: Vec<Font<'a>>,
+    fonts: Vec<Rc<Font>>,
 
     /// The font_size that will be used to draw the backing textures of the characters. Changing this value
     /// will affect only the fonts that were added after changing the value (with the add_font or add_fonts method).
@@ -75,24 +75,24 @@ pub struct TextRenderer<'a> {
     /// and all special characters I could find on my keyboard. If you need to draw characters not in this string, you will need to 
     /// modify it before adding fonts. It will usually not be necessary, but I might have missed some characters or you might need 
     /// for instance Chinese characters. Please note that more characters means more memory usage.
-    pub all_chars: &'a str,
+    pub all_chars: String,
 
-    selected_font: RefCell<Option<FontID>>,
+    selected_font: Rc<RefCell<Option<FontID>>>,
 
-    shader_program: RefCell<TextProgram>
+    shader_program: Rc<RefCell<TextProgram>>
 }
 
 pub const DEFAULT_FONT_SIZE: usize = 250;
 pub const DEFAULT_LINE_WIDTH: f64 = 0.02;
 pub const DEFAULT_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZáçéíóúýÁÇÉÍÓÚÝ 0123456789!@#$%^&*?<>:\"';[]{}()|\\/.,-_=+€`~";
 
-impl<'a> TextRenderer<'a> {
+impl TextRenderer {
 
     /// This function will create a TextRenderer instance from the given reference counter. This function is convenient if
     /// you are already using an Rc to store your webgl context. The created TextRenderer won't have any fonts yet, read the
     /// description of TextRenderer for more information about this.
-    pub fn from_rc(gl: Rc<WebGlRenderingContext>) -> TextRenderer<'a> {
-        let shader_program = RefCell::new(TextProgram::create_instance(Rc::clone(&gl)));
+    pub fn from_rc(gl: Rc<WebGlRenderingContext>) -> TextRenderer {
+        let shader_program = Rc::new(RefCell::new(TextProgram::create_instance(Rc::clone(&gl))));
         let fonts = Vec::new();
 
         TextRenderer {
@@ -101,23 +101,23 @@ impl<'a> TextRenderer<'a> {
 
             font_size: DEFAULT_FONT_SIZE,
             line_width: DEFAULT_LINE_WIDTH,
-            all_chars: DEFAULT_CHARS,
+            all_chars: DEFAULT_CHARS.to_string(),
 
-            selected_font: RefCell::new(None),
+            selected_font: Rc::new(RefCell::new(None)),
             shader_program
         }
     }
 
     /// This function will create a TextRenderer instance for the given webgl rendering context. The created TextRenderer 
     /// won't have any fonts yet, read the description of TextRenderer for more information about this.
-    pub fn from_gl(gl: WebGlRenderingContext) -> TextRenderer<'a> {
+    pub fn from_gl(gl: WebGlRenderingContext) -> TextRenderer {
         TextRenderer::from_rc(Rc::new(gl))
     }
 
     /// This function will create a TextRenderer instance for the given canvas. This method will panic if no webgl context
     /// can be created for the canvas. Even though browsers that support WebAssembly generally support WebGl, only 1 type of
     /// context can be created for each canvas, so this would fail if the canvas has created a 2d context before.
-    pub fn from_canvas(canvas: &HtmlCanvasElement) -> TextRenderer<'a> {
+    pub fn from_canvas(canvas: &HtmlCanvasElement) -> TextRenderer {
         TextRenderer::from_gl(canvas.get_context("webgl").expect("should have get_context").expect("should be able to obtain webgl context").dyn_into::<WebGlRenderingContext>().expect("getContext'webgl' should give a webgl rendering context"))
     }
 
@@ -130,10 +130,10 @@ impl<'a> TextRenderer<'a> {
     /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and all created Font's
     /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
     /// about any of the three properties, see their description.
-    pub fn add_fonts(&'a mut self, fonts: Vec<FontDetails<'a>>){
+    pub fn add_fonts(&mut self, fonts: Vec<FontDetails>){
         let mut new_fonts = Vec::with_capacity(fonts.len());
         for font_details in fonts {
-            new_fonts.push(Self::create_font(&self.gl, &self.shader_program, FontID::new(self.fonts.len()), &self.selected_font, self.font_size, self.line_width, font_details, self.all_chars));
+            new_fonts.push(Self::create_font(&self.gl, &self.shader_program, FontID::new(self.fonts.len()), &self.selected_font, self.font_size, self.line_width, font_details, &self.all_chars));
         }
         self.fonts.append(&mut new_fonts);
     }
@@ -147,25 +147,25 @@ impl<'a> TextRenderer<'a> {
     /// This method will use the current font_size, line_width and all_chars values of this TextRenderer and the created Font
     /// will keep those values even if the values of this TextRenderer would be changed after this call. For more information
     /// about any of the three properties, see their description.
-    pub fn add_font(&'a mut self, font_details: FontDetails<'a>) -> &'a Font {
-        let font = Self::create_font(&self.gl, &self.shader_program, FontID::new(self.fonts.len()), &self.selected_font, self.font_size, self.line_width, font_details, self.all_chars);
+    pub fn add_font(&mut self, font_details: FontDetails) -> Rc<Font> {
+        let font = Self::create_font(&self.gl, &self.shader_program, FontID::new(self.fonts.len()), &self.selected_font, self.font_size, self.line_width, font_details, &self.all_chars);
         self.fonts.push(font);
-        &self.fonts[self.fonts.len() - 1]
+        Rc::clone(&self.fonts[self.fonts.len() - 1])
     }
 
-    fn create_font(gl: &'a WebGlRenderingContext, shader_program: &'a RefCell<TextProgram>, font_id: FontID, selected_font: &'a RefCell<Option<FontID>>, font_size: usize, line_width: f64, font_details: FontDetails<'a>, all_chars: &str) -> Font<'a> {
-        Font::new(&gl, &shader_program, font_id, selected_font, font_size, line_width, font_details, all_chars)
+    fn create_font(gl: &Rc<WebGlRenderingContext>, shader_program: &Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: &Rc<RefCell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, all_chars: &str) -> Rc<Font> {
+        Rc::new(Font::new(Rc::clone(gl), Rc::clone(shader_program), font_id, Rc::clone(selected_font), font_size, line_width, font_details, all_chars))
     }
 
     /// Gets a previously created Font (with add_font or add_fonts) by its FontDetails. It will return the reference to the first
     /// Font with the same FontDetails as font_details, or None if no such Font was found. The font details will be compared by
     /// value, not by reference, so the supplied font_details does not need to have the same memory address as the original one of
     /// the Font.
-    pub fn get_font_by_details(&self, font_details: FontDetails<'a>) -> Option<&Font> {
+    pub fn get_font_by_details(&self, font_details: FontDetails) -> Option<&Font> {
 
         // Don't bother doing clever search because I am expecting the number of fonts to be small
         for font in &self.fonts {
-            if font.get_font_details() == font_details {
+            if *font.get_font_details() == font_details {
                 return Some(font);
             }
         }
@@ -191,7 +191,7 @@ impl<'a> TextRenderer<'a> {
             // The fonts need to know the aspect ratio for nice text rendering
             let bound_canvas = maybe_bound_canvas.unwrap().dyn_into::<HtmlCanvasElement>().expect("The bound webgl canvas should be a canvas element");
             let aspect_ratio = bound_canvas.width() as f32 / bound_canvas.height() as f32;
-            for font in &mut self.fonts {
+            for font in &self.fonts {
                 font.set_aspect_ratio(aspect_ratio);
             }
 
