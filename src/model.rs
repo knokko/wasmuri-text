@@ -2,7 +2,7 @@ use web_sys::WebGlBuffer;
 use web_sys::WebGlRenderingContext;
 use web_sys::WebGlRenderingContext as GL;
 
-use wasmuri_core::util::color::Color;
+use wasmuri_core::util::TextColors;
 
 use super::shaders::TextProgram;
 use super::Font;
@@ -78,7 +78,7 @@ impl TextModel {
     /// 
     /// The background_color will determine the color of the render space wherever no text is drawn (or the text is (partially)
     /// transparent). If it is transparent, the text will be drawn over whatever the previous color was.
-    pub fn render(&self, offset_x: f32, offset_y: f32, scale_y: f32, fill_color: Color, stroke_color: Color, background_color: Color){
+    pub fn render(&self, offset_x: f32, offset_y: f32, scale_y: f32, colors: TextColors){
         let need_set_font;
         let my_font = self.get_font();
         {
@@ -98,9 +98,9 @@ impl TextModel {
         let scale_x = scale_y / my_font.aspect_ratio.get();
 
         let mut shader = my_font.shader_program.borrow_mut();
-        shader.set_background_color(background_color);
-        shader.set_fill_color(fill_color);
-        shader.set_stroke_color(stroke_color);
+        shader.set_background_color(colors.background_color);
+        shader.set_fill_color(colors.fill_color);
+        shader.set_stroke_color(colors.stroke_color);
         shader.set_screen_position(offset_x, offset_y);
         shader.set_scale(scale_x, scale_y);
         self.bind(&shader);
