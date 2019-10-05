@@ -127,8 +127,6 @@ impl TextModel {
 impl Drop for TextModel {
 
     fn drop(&mut self){
-
-        // TODO This seems dangerous, wouldn't it outlive its Font here?
         self.get_font().gl.delete_buffer(Some(&self.buffer));
     }
 }
