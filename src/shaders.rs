@@ -41,7 +41,7 @@ use web_sys::WebGlUniformLocation;
 
 use std::rc::Rc;
 
-use wasmuri_core::util::Color;
+use wasmuri_core::color::Color;
 
 pub struct TextProgram {
 

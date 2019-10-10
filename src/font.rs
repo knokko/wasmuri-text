@@ -1,17 +1,21 @@
-use web_sys::CanvasRenderingContext2d;
-use web_sys::WebGlRenderingContext;
-use web_sys::WebGlRenderingContext as GL;
-use web_sys::WebGlTexture;
-use web_sys::window;
-use web_sys::HtmlCanvasElement;
-use web_sys::HtmlElement;
+use web_sys::{
+    CanvasRenderingContext2d,
+    WebGlBuffer,
+    WebGlRenderingContext,
+    WebGlRenderingContext as GL,
+    WebGlTexture,
+    window,
+    HtmlCanvasElement,
+    HtmlElement
+};
 
 use js_sys::Float32Array;
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
-use wasmuri_core::util::print;
+use wasmuri_core::util::*;
+use wasmuri_core::color::Color;
 
 use std::cell::RefCell;
 use std::cell::Cell;
@@ -111,9 +115,10 @@ pub struct Font {
     pub(super) aspect_ratio: Cell<f32>,
 
     pub(super) id: FontID,
-    pub(super) selected_font: Rc<RefCell<Option<FontID>>>,
+    pub(super) selected_font: Rc<Cell<Option<FontID>>>,
 
     characters: Vec<Option<Character>>,
+    fill_buffer: WebGlBuffer,
 
     pub(super) gl: Rc<WebGlRenderingContext>,
     pub(super) shader_program: Rc<RefCell<TextProgram>>,
@@ -122,7 +127,7 @@ pub struct Font {
 
 impl Font {
 
-    pub(super) fn new(gl: Rc<WebGlRenderingContext>, shader_program: Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: Rc<RefCell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, chars: &str) -> Font {
+    pub(super) fn new(gl: Rc<WebGlRenderingContext>, shader_program: Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: Rc<Cell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, chars: &str) -> Font {
         let document = window().unwrap().document().unwrap();
         let font_string = &format!("{} {}px {}", font_details.get_before_size(), font_size, font_details.get_after_size());
 
@@ -265,9 +270,6 @@ impl Font {
             index += 1;
         }
 
-        // Temporarily for testing purposes:
-        document.body().unwrap().append_child(&texture_canvas).unwrap();
-
         // Now we have drawn all text onto the canvas, so it's time to convert it to a WebGL texture
         let image_data = texture_ctx.get_image_data(0.0, 0.0, total_width as f64, total_height as f64).unwrap();
 
@@ -280,6 +282,22 @@ impl Font {
         gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_MIN_FILTER, GL::LINEAR as i32);
         gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_MAG_FILTER, GL::LINEAR as i32);
 
+        // Creating the fill_rect helper model
+        let fill_buffer = gl.create_buffer().unwrap();
+        {
+            //let position_data = vec![0.0,0.0, 1.0,0.0, 1.0,1.0, 1.0,1.0, 0.0,1.0, 0.0,0.0];
+            //let texture_data = vec![1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0];
+            let buffer_data = vec![0.0,0.0, 1.0,0.0, 1.0,1.0, 1.0,1.0, 0.0,1.0, 0.0,0.0,   1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0, 1.0,1.0];
+
+            gl.bind_buffer(GL::ARRAY_BUFFER, Some(&fill_buffer));
+
+            // Really? Is there no safe way to do this?
+            unsafe {
+                let js_array = Float32Array::view(&buffer_data);
+                gl.buffer_data_with_array_buffer_view(GL::ARRAY_BUFFER, &js_array, GL::STATIC_DRAW);
+            }
+        }
+
         Font {
             font_details,
             max_text_height: max_height,
@@ -291,6 +309,7 @@ impl Font {
             selected_font,
 
             characters: character_map,
+            fill_buffer,
 
             gl,
             shader_program,
@@ -416,6 +435,44 @@ impl Font {
         self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.texture));
         let shader = self.shader_program.borrow();
         shader.set_texture_sampler(0);
+    }
+
+    /// Fills the given region with the given color.
+    /// 
+    /// Must only be used during the text render phase
+    pub fn fill_rect(&self, region: Region, color: Color){
+
+        let need_set_font;
+        {
+            let selected_font = self.selected_font.get();
+            match selected_font {
+                Some(font_id) => need_set_font = font_id != self.id,
+                None => need_set_font = true
+            };
+        }
+
+        if need_set_font {
+            self.set_current();
+            self.selected_font.set(Some(self.id));
+        }
+
+        let mut shader = self.shader_program.borrow_mut();
+
+        let gl = &self.gl;
+        gl.bind_buffer(GL::ARRAY_BUFFER, Some(&self.fill_buffer));
+        let num_components = 2;
+
+        gl.vertex_attrib_pointer_with_i32(shader.get_relative_position() as u32, num_components, WebGlRenderingContext::FLOAT, false, 0, 0);
+        gl.enable_vertex_attrib_array(shader.get_relative_position() as u32);
+
+        let f32_size = 4;
+        gl.vertex_attrib_pointer_with_i32(shader.get_texture_coords() as u32, num_components, WebGlRenderingContext::FLOAT, false, 0, f32_size * num_components * 6);
+        gl.enable_vertex_attrib_array(shader.get_texture_coords() as u32);
+
+        shader.set_background_color(color);
+        shader.set_screen_position(region.get_min_x(), region.get_min_y());
+        shader.set_scale(region.get_width(), region.get_height());
+        gl.draw_arrays(GL::TRIANGLES, 0, 6);
     }
 
     pub(super) fn set_aspect_ratio(&self, aspect_ratio: f32){

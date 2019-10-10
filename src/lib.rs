@@ -5,7 +5,10 @@ use web_sys::HtmlCanvasElement;
 use wasm_bindgen::JsCast;
 
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{
+    Cell,
+    RefCell
+};
 
 mod character;
 mod shaders;
@@ -77,7 +80,7 @@ pub struct TextRenderer {
     /// for instance Chinese characters. Please note that more characters means more memory usage.
     pub all_chars: String,
 
-    selected_font: Rc<RefCell<Option<FontID>>>,
+    selected_font: Rc<Cell<Option<FontID>>>,
 
     shader_program: Rc<RefCell<TextProgram>>
 }
@@ -103,7 +106,7 @@ impl TextRenderer {
             line_width: DEFAULT_LINE_WIDTH,
             all_chars: DEFAULT_CHARS.to_string(),
 
-            selected_font: Rc::new(RefCell::new(None)),
+            selected_font: Rc::new(Cell::new(None)),
             shader_program
         }
     }
@@ -153,7 +156,7 @@ impl TextRenderer {
         Rc::clone(&self.fonts[self.fonts.len() - 1])
     }
 
-    fn create_font(gl: &Rc<WebGlRenderingContext>, shader_program: &Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: &Rc<RefCell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, all_chars: &str) -> Rc<Font> {
+    fn create_font(gl: &Rc<WebGlRenderingContext>, shader_program: &Rc<RefCell<TextProgram>>, font_id: FontID, selected_font: &Rc<Cell<Option<FontID>>>, font_size: usize, line_width: f64, font_details: FontDetails, all_chars: &str) -> Rc<Font> {
         Rc::new(Font::new(Rc::clone(gl), Rc::clone(shader_program), font_id, Rc::clone(selected_font), font_size, line_width, font_details, all_chars))
     }
 
@@ -182,8 +185,7 @@ impl TextRenderer {
         let maybe_bound_canvas = gl.canvas();
 
         // We don't know what happened before the GUI rendering, so let's not make any assumptions about our current font
-        let mut selected_font = self.selected_font.borrow_mut();
-        *selected_font = None;
+        self.selected_font.set(None);
 
         // If there is no canvas bound to it anymore, don't bother rendering
         if maybe_bound_canvas.is_some() {

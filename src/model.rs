@@ -2,7 +2,7 @@ use web_sys::WebGlBuffer;
 use web_sys::WebGlRenderingContext;
 use web_sys::WebGlRenderingContext as GL;
 
-use wasmuri_core::util::TextColors;
+use wasmuri_core::color::*;
 
 use super::shaders::TextProgram;
 use super::Font;
@@ -82,7 +82,7 @@ impl TextModel {
         let need_set_font;
         let my_font = self.get_font();
         {
-            let selected_font = *my_font.selected_font.borrow();
+            let selected_font = my_font.selected_font.get();
             match selected_font {
                 Some(font_id) => need_set_font = font_id != my_font.id,
                 None => need_set_font = true
@@ -90,9 +90,8 @@ impl TextModel {
         }
 
         if need_set_font {
-            let mut selected_font = my_font.selected_font.borrow_mut();
             my_font.set_current();
-            *selected_font = Some(my_font.id);
+            my_font.selected_font.set(Some(my_font.id));
         }
 
         let scale_x = scale_y / my_font.aspect_ratio.get();
@@ -119,7 +118,7 @@ impl TextModel {
         scale_x * self.total_width
     }
 
-    fn get_font(&self) -> &Rc<Font> {
+    pub fn get_font(&self) -> &Rc<Font> {
         &self.font
     }
 }
