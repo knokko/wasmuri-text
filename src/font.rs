@@ -470,8 +470,8 @@ impl Font {
         gl.enable_vertex_attrib_array(shader.get_texture_coords() as u32);
 
         shader.set_background_color(color);
-        shader.set_screen_position(region.get_min_x(), region.get_min_y());
-        shader.set_scale(region.get_width(), region.get_height());
+        shader.set_screen_position(region.get_float_min_x(), region.get_float_min_y());
+        shader.set_scale(region.get_float_width(), region.get_float_height());
         gl.draw_arrays(GL::TRIANGLES, 0, 6);
     }
 
