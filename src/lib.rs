@@ -164,12 +164,12 @@ impl TextRenderer {
     /// Font with the same FontDetails as font_details, or None if no such Font was found. The font details will be compared by
     /// value, not by reference, so the supplied font_details does not need to have the same memory address as the original one of
     /// the Font.
-    pub fn get_font_by_details(&self, font_details: FontDetails) -> Option<&Font> {
+    pub fn get_font_by_details(&self, font_details: FontDetails) -> Option<Rc<Font>> {
 
         // Don't bother doing clever search because I am expecting the number of fonts to be small
         for font in &self.fonts {
             if *font.get_font_details() == font_details {
-                return Some(font);
+                return Some(Rc::clone(font));
             }
         }
 
