@@ -14,8 +14,7 @@ use js_sys::Float32Array;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
-use wasmuri_core::util::*;
-use wasmuri_core::color::Color;
+use wasmuri_core::*;
 
 use std::cell::RefCell;
 use std::cell::Cell;

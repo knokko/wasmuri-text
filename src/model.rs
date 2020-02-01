@@ -2,7 +2,7 @@ use web_sys::WebGlBuffer;
 use web_sys::WebGlRenderingContext;
 use web_sys::WebGlRenderingContext as GL;
 
-use wasmuri_core::color::*;
+use wasmuri_core::*;
 
 use super::shaders::TextProgram;
 use super::Font;

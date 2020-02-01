@@ -32,7 +32,6 @@ void main(){
 }
 ";
 
-use web_sys::WebGlRenderingContext;
 use web_sys::WebGlRenderingContext as GL;
 
 use web_sys::WebGlProgram;
@@ -41,11 +40,11 @@ use web_sys::WebGlUniformLocation;
 
 use std::rc::Rc;
 
-use wasmuri_core::color::Color;
+use wasmuri_core::Color;
 
 pub struct TextProgram {
 
-    gl: Rc<WebGlRenderingContext>,
+    gl: Rc<GL>,
 
     program: WebGlProgram,
     vertex_shader: WebGlShader,
@@ -73,7 +72,7 @@ pub struct TextProgram {
 
 impl TextProgram {
 
-    pub fn create_instance(gl: Rc<WebGlRenderingContext>) -> TextProgram {
+    pub fn create_instance(gl: Rc<GL>) -> TextProgram {
 
         let vertex_shader = gl.create_shader(GL::VERTEX_SHADER).expect("Couldn't create vertex shader");
         gl.shader_source(&vertex_shader, VERTEX_SOURCE);
